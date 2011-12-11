@@ -26,4 +26,5 @@ import java.io.InputStream;
 public interface DatabaseReader {
     Database read(InputStream i) throws Exception;
     String getExtension();
+    Account deserializeAccount(InputStream is) throws Exception;
 }

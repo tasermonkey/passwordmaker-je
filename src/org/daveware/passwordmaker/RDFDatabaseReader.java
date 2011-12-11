@@ -203,6 +203,15 @@ public class RDFDatabaseReader implements DatabaseReader {
         }
         return items;
     }
+    
+    @Override
+    public Account deserializeAccount(InputStream is) throws Exception {
+        DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
+        Document doc = docBuilder.parse(is);
+        doc.getDocumentElement().normalize();
+        return readAccountFromDescriptionNode(doc.getDocumentElement());
+    }
 
     
     /**
