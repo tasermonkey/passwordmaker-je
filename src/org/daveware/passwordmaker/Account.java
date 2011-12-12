@@ -155,6 +155,7 @@ public final class Account implements Comparable<Account> {
         for(AccountPatternData data : a.getPatterns()) {
             this.patterns.add(new AccountPatternData(data));
         }
+        this.setUrlComponents(a.getUrlComponents());
     }
     
 	    /**
