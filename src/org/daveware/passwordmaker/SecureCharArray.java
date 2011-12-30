@@ -17,6 +17,8 @@
  */
 package org.daveware.passwordmaker;
 
+import java.util.Arrays;
+
 /**
  * Provides an array capable of erasing the contents upon request.
  * 
@@ -33,7 +35,7 @@ package org.daveware.passwordmaker;
  * 
  * @author Dave Marotti
  */
-public class SecureCharArray {
+public class SecureCharArray implements CharSequence {
     private char [] data = null;
     
     public SecureCharArray()
@@ -260,4 +262,25 @@ public class SecureCharArray {
     {
         return data.length;
     }
+
+	@Override
+	public char charAt(int index) {
+		return getCharAt(index);
+	}
+
+	@Override
+	public int length() {
+		return size();
+	}
+
+	/**
+	 * @see {@link CharSequence#subSequence(int, int)}
+	 * @throws ArrayIndexOutOfBoundsException - if from < 0 or from > original.length()
+	 * @throws IllegalArgumentException - if from > to
+	 */
+	@Override
+	public CharSequence subSequence(int start, int end) {
+		char[] nBuffer = Arrays.copyOfRange(data, start, end);
+		return new SecureCharArray(nBuffer);
+	}
 }
