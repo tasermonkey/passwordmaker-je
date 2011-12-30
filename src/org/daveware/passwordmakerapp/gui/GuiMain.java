@@ -20,6 +20,8 @@ package org.daveware.passwordmakerapp.gui;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -94,6 +96,8 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.wb.swt.SWTResourceManager;
+import org.eclipse.swt.events.KeyAdapter;
+import org.eclipse.swt.events.KeyEvent;
 
 /**
  * Implements the main window for PasswordMakerJE.
@@ -116,7 +120,7 @@ public class GuiMain implements DatabaseListener {
     private Text editUsername;
     private Text editMP;
     private Text editCopySeconds;
-    private Text editUrl;
+    private Text editUrlSearch;
     private Canvas canvasOutput;
     private Display display;
     private Combo comboCopyBehavior;
@@ -144,7 +148,6 @@ public class GuiMain implements DatabaseListener {
     private MenuItem menuItemDeleteGroup;
     private MenuItem menuItemSave;
     private MenuItem menuItemSaveAs;
-    private Text textFilename;
     private ControlDecoration secondsDecoration;
     
     
@@ -172,15 +175,34 @@ public class GuiMain implements DatabaseListener {
     private Database db = null;
     private BuildInfo buildInfo = null;
     private SortOptions sortOptions = new SortOptions();
+    private boolean urlSearchEnabled = true;
     
     private boolean isFiltering = false;
     private boolean showPassword = true;
 
     private boolean closeAfterTimer = false;
+    private Text editInputUrl;
+    private Label lblInputUrl;
+    private Text editUrl;
+    private Label lblUrl_1;
     
     public GuiMain(CmdLineSettings c) {
         cmdLineSettings = c;
         buildInfo = new BuildInfo();
+    }
+
+    private void showException(Exception e) {
+    	Shell bogus = new Shell();
+
+    	if(e==null) {
+    		MBox.showError(bogus, "An exception has occurred but the data it contained was empty. Please consider filing a bug report at http://code.google.com/p/passwordmaker-je");
+    	}
+    	else {
+	    	ExceptionDlg dlg = new ExceptionDlg(bogus, e);
+	    	dlg.open();
+    	}
+    	
+    	bogus.dispose();
     }
     
     /**
@@ -188,8 +210,9 @@ public class GuiMain implements DatabaseListener {
      * @return
      */
     public int run() {
-        open();
-        return 0;
+   		open();
+   
+   		return 0;
     }
     
     /**
@@ -198,26 +221,36 @@ public class GuiMain implements DatabaseListener {
      * 
      */
     private void open() {
-        display = Display.getDefault();
-        createContents();
-        
-        setupFonts();
-        setupTree();
-        setupDecorators();
-        
-        shlPasswordMaker.open();
-        shlPasswordMaker.layout();
+    	try {
+	        display = Display.getDefault();
+	        createContents();
+	        
+	        setupFonts();
+	        setupTree();
+	        setupDecorators();
+	        
+	        shlPasswordMaker.open();
+	        shlPasswordMaker.layout();
+	
+	        pwm = new PasswordMaker();
+	        loadFromCmdLineSettings();
+	        
+	        regeneratePasswordAndDraw();
 
-        pwm = new PasswordMaker();
-        loadFromCmdLineSettings();
-        
-        regeneratePasswordAndDraw();
+	        while (!shlPasswordMaker.isDisposed()) {
+	            if (!display.readAndDispatch()) {
+	                display.sleep();
+	            }
+	        }
+    	}
+    	catch(NullPointerException ne) {
+    		showException(ne);
+    		return;
+    	}
+    	catch(Exception e) {
+    		showException(e);
+    	}
 
-        while (!shlPasswordMaker.isDisposed()) {
-            if (!display.readAndDispatch()) {
-                display.sleep();
-            }
-        }
     }
     
     protected void setupDecorators() {
@@ -329,13 +362,23 @@ public class GuiMain implements DatabaseListener {
             
         });
         
+        shlPasswordMaker.getDisplay().addFilter(SWT.KeyDown, new Listener() {
+            @Override
+            public void handleEvent(Event e) {
+                if((e.stateMask & SWT.CTRL) == SWT.CTRL || (e.stateMask & SWT.COMMAND) == SWT.COMMAND) {
+                    if(e.keyCode == 'f') {
+                        accountFilterText.setFocus();
+                    }
+                }
+            }
+        });
         searchImage = SWTResourceManager.getImage(GuiMain.class, "/org/daveware/passwordmakerapp/icons/magglass.png");
         cancelImage = SWTResourceManager.getImage(GuiMain.class, "/org/daveware/passwordmakerapp/icons/cancel.png");
         eyeImage = SWTResourceManager.getImage(GuiMain.class, "/org/daveware/passwordmakerapp/icons/eye.png");
         eyeClosedImage = SWTResourceManager.getImage(GuiMain.class, "/org/daveware/passwordmakerapp/icons/eye_closed.png");
 
         shlPasswordMaker.setMinimumSize(new Point(855, 345));
-        shlPasswordMaker.setSize(855, 345);
+        shlPasswordMaker.setSize(855, 412);
         setTitle();
 //        shlPasswordMaker.setText(TITLE_STRING + " - " + buildInfo.getVersion());
         shlPasswordMaker.setLayout(new FormLayout());
@@ -374,6 +417,14 @@ public class GuiMain implements DatabaseListener {
         filterIcon.setText("");
         
         accountFilterText = new Text(composite, SWT.BORDER);
+        accountFilterText.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent arg0) {
+                if(arg0.keyCode == SWT.CR) {
+                    editMP.setFocus();
+                }
+            }
+        });
         accountFilterText.addModifyListener(new ModifyListener() {
         	public void modifyText(ModifyEvent arg0) {
         		onFilterModified(arg0);
@@ -416,23 +467,15 @@ public class GuiMain implements DatabaseListener {
         GridLayout gl_grpInput = new GridLayout(2, false);
         grpInput.setLayout(gl_grpInput);
         
-        Label lblDatabase = new Label(grpInput, SWT.NONE);
-        lblDatabase.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
-        lblDatabase.setText("File:");
-        
-        textFilename = new Text(grpInput, SWT.BORDER);
-        textFilename.setEditable(false);
-        textFilename.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false, 1, 1));
-        
         Label lblUrl = new Label(grpInput, SWT.NONE);
         lblUrl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
         lblUrl.setText("URL Search:");
         
-        editUrl = new Text(grpInput, SWT.BORDER);
-        editUrl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-        editUrl.addModifyListener(new ModifyListener() {
+        editUrlSearch = new Text(grpInput, SWT.BORDER);
+        editUrlSearch.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+        editUrlSearch.addModifyListener(new ModifyListener() {
         	public void modifyText(ModifyEvent arg0) {
-        		onUrlModified(arg0);
+        		onUrlSearchModified(arg0);
         	}
         });
         
@@ -453,6 +496,27 @@ public class GuiMain implements DatabaseListener {
         editDesc.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
         editDesc.setEnabled(false);
         editDesc.setEditable(false);
+        
+        lblInputUrl = new Label(grpInput, SWT.NONE);
+        lblInputUrl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+        lblInputUrl.setText("Input URL:");
+        
+        editInputUrl = new Text(grpInput, SWT.BORDER);
+        editInputUrl.addModifyListener(new ModifyListener() {
+            public void modifyText(ModifyEvent arg0) {
+                regeneratePasswordAndDraw();
+            }
+        });
+        editInputUrl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+        
+        lblUrl_1 = new Label(grpInput, SWT.NONE);
+        lblUrl_1.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+        lblUrl_1.setText("URL:");
+        
+        editUrl = new Text(grpInput, SWT.BORDER);
+        editUrl.setEnabled(false);
+        editUrl.setEditable(false);
+        editUrl.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
         
         Label lblUsername = new Label(grpInput, SWT.RIGHT);
         lblUsername.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -681,7 +745,12 @@ public class GuiMain implements DatabaseListener {
                 newFile();
             }
         });
-        menuItemNew.setText("New");
+        
+        int specialKey = Utilities.isMac() ? SWT.COMMAND : SWT.CTRL;
+        String specialKeyStr = Utilities.isMac() ? "\tCommand+" : "\tCtrl+"; 
+
+        menuItemNew.setText("New" + specialKeyStr + "N");
+        menuItemNew.setAccelerator(specialKey + 'N');
         
         menuItemOpen = new MenuItem(menu_3, SWT.NONE);
         menuItemOpen.addSelectionListener(new SelectionAdapter() {
@@ -690,7 +759,8 @@ public class GuiMain implements DatabaseListener {
                 openFile();
             }
         });
-        menuItemOpen.setText("Open");
+        menuItemOpen.setText("Open" + specialKeyStr + "O");
+        menuItemOpen.setAccelerator(specialKey + 'O');
         
         menuItemSave = new MenuItem(menu_3, SWT.NONE);
         menuItemSave.addSelectionListener(new SelectionAdapter() {
@@ -699,7 +769,8 @@ public class GuiMain implements DatabaseListener {
                 saveFile();
             }
         });
-        menuItemSave.setText("Save");
+        menuItemSave.setText("Save" + specialKeyStr + "S");
+        menuItemSave.setAccelerator(specialKey + 'S');
         
         menuItemSaveAs = new MenuItem(menu_3, SWT.NONE);
         menuItemSaveAs.addSelectionListener(new SelectionAdapter() {
@@ -764,11 +835,16 @@ public class GuiMain implements DatabaseListener {
      * Locates the current account based on information in the config.
      * @return 0 if found, else non-zero.
      */
-    public int findAccount() {
+    public int findAccountByUrl() {
+        // Url search gets disabled when manually setting the value of the editUrlSearch widget,
+        // otherwise it invokes this function
+        if(!urlSearchEnabled)
+            return 0;
+        
         int ret = 1;
 
         Account acc = null;
-        String matchUrl = editUrl.getText();
+        String matchUrl = editUrlSearch.getText();
         
         try {
             acc = db.findAccountByUrl(matchUrl);
@@ -777,6 +853,7 @@ public class GuiMain implements DatabaseListener {
             else
                 accountTreeViewer.setSelection(null);
             //selectAccount(acc);
+            ret = 0;
         }
         catch(Exception e) {
             MBox.showError(shlPasswordMaker, "Unable to locate account based on URL.\n" + e.getMessage());
@@ -824,9 +901,12 @@ public class GuiMain implements DatabaseListener {
                 Account tempAccount = new Account();
                 tempAccount.copySettings(selectedAccount);
                 tempAccount.setUsername(editUsername.getText());
+                tempAccount.setId(selectedAccount.getId());
+                tempAccount.setUrl(editUrl.getText());
                 
         		mpw = new SecureCharArray(editMP.getText());
-        		output = pwm.makePassword(mpw, tempAccount);
+        		
+                output = pwm.makePassword(mpw, tempAccount);
         	}
         	else {
         		output = new SecureCharArray();
@@ -899,7 +979,7 @@ public class GuiMain implements DatabaseListener {
      */
     private void loadFromCmdLineSettings() {
         if(cmdLineSettings.matchUrl!=null)
-        	editUrl.setText(cmdLineSettings.matchUrl);
+        	editUrlSearch.setText(cmdLineSettings.matchUrl);
         if(cmdLineSettings.inputFilename!=null) {
             openFile(cmdLineSettings.inputFilename);
         }
@@ -909,7 +989,7 @@ public class GuiMain implements DatabaseListener {
         
         // Only attempt an initial find if something was passed on the commandline
         if(cmdLineSettings.matchUrl!=null && cmdLineSettings.matchUrl.length()>0)
-            findAccount();
+            findAccountByUrl();
     }
 
     /**
@@ -950,7 +1030,6 @@ public class GuiMain implements DatabaseListener {
         db = new Database();
         db.addDatabaseListener(this);
         accountTreeViewer.setInput(db);
-        textFilename.setText("");
     
         try {
             db.addDefaultAccount();
@@ -1236,6 +1315,10 @@ public class GuiMain implements DatabaseListener {
     	isFiltering = false;
     }
     
+    /**
+     * Invoked when the filter text is modified.
+     * @param e The modification event.
+     */
     private void onFilterModified(ModifyEvent e) {
     	String text = accountFilterText.getText();
     	if(text.compareTo(ACCOUNT_FILTER_DESC)==0 || text.length()==0) {
@@ -1245,9 +1328,53 @@ public class GuiMain implements DatabaseListener {
     		isFiltering = true;
     	}
     	
-    	if(accountTreeViewer!=null)
+    	if(accountTreeViewer!=null) {
     		accountTreeViewer.refresh();
+    		if(text.length()>0) {
+    		    accountTreeViewer.expandAll();
+    		    selectFirstLeafAccount();
+    		}
+    	}
     }
+    
+    /**
+     * Selects the first available account that is not a folder, eg a leaf node. It
+     * takes into consideration filtering rules.
+     */
+    private void selectFirstLeafAccount() {
+        // This is a gross hack that doesn't operate on what accountTreeViewer tells us, and that's
+        // because I can't for the life of me figure out how to get it to tell me what leaf nodes
+        // are visible.  I *hate* SWT's documentation.
+        //
+        // This is  inefficient as it is walking the entire account database tree looking
+        // for nodes that match the text, essentially re-filtering. If anyone sees this and knows
+        // how to get at the filtered data, please let me know.
+    	
+    	// For some reason only on OSX, selectFirstLeafAccount() gets called before the database
+    	// is ever created.  So...
+    	if(db==null)
+    		return;
+    	
+        String filterText = accountFilterText.getText().toLowerCase();
+        ArrayList<Account> parentStack = new ArrayList<Account>();
+        parentStack.add(db.getRootAccount());
+        
+        while(parentStack.size()>0) {
+            Account parentAccount = parentStack.remove(0);
+            
+            for(Account child : parentAccount.getChildren()) {
+                if(child.isFolder())
+                    parentStack.add(child);
+                else {
+                    if(filterText.length()==0 || child.getName().toLowerCase().contains(filterText)) {
+                        accountTreeViewer.setSelection(new StructuredSelection(child));
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     
     private void onNewAccountSelected() {
         Account parentAccount = null;
@@ -1413,8 +1540,8 @@ public class GuiMain implements DatabaseListener {
      * anything matching the current URL text.
      * @param arg0 Ignored, can be null.
      */
-    private void onUrlModified(ModifyEvent arg0) {
-    	findAccount();
+    private void onUrlSearchModified(ModifyEvent arg0) {
+    	findAccountByUrl();
     }
         
     
@@ -1423,6 +1550,22 @@ public class GuiMain implements DatabaseListener {
      * @return true on success.
      */
     private boolean openFile() {
+        if(db!=null && db.isDirty()) {
+            switch(MBox.showYesNoCancel(shlPasswordMaker, EXIT_PROMPT)) {
+            case SWT.YES:
+                if(saveFile()==false)
+                    return false;
+                break;
+                
+            case SWT.NO:
+                break;
+                
+            case SWT.CANCEL:
+                return false;
+            }
+        }
+
+        
         FileDialog fd = new FileDialog(shlPasswordMaker, SWT.OPEN);
         fd.setText("Open RDF File");
         fd.setFilterExtensions(new String [] { "*.rdf", "*.*" });
@@ -1454,7 +1597,6 @@ public class GuiMain implements DatabaseListener {
             
             // Widget setup
             accountTreeViewer.setInput(db);
-            textFilename.setText(filename);
             
             selectFirstAccount();
             setGuiFromGlobalSettings();
@@ -1493,6 +1635,8 @@ public class GuiMain implements DatabaseListener {
        
        
        try {
+           updateUrlFromInputUrl();
+           
            gc = new GC(passwordImage);
            gc.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK));
            gc.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
@@ -1564,7 +1708,7 @@ public class GuiMain implements DatabaseListener {
 
     /**
      * Opens up a dialog-box allowing the user to select a file to save to. This will invoke
-     * saveFile behind the scenes and update currentFilename/textFilename on success.
+     * saveFile behind the scenes and update currentFilename on success.
      * @return true on success.
      */
     private boolean saveFileAs() {
@@ -1584,13 +1728,11 @@ public class GuiMain implements DatabaseListener {
 
             
             if(saveFile()==true) {
-                textFilename.setText(currentFilename);
                 return true;
             }
             
             // it failed if we get here, restore the filename
             currentFilename = oldFilename;
-            textFilename.setText(currentFilename);
         }
         
         
@@ -1611,6 +1753,24 @@ public class GuiMain implements DatabaseListener {
             editAccount.setText(selectedAccount.getName());
             editDesc.setText(selectedAccount.getDesc());
             editUsername.setText(selectedAccount.getUsername());
+            
+            // When the default account is selected, the user can enter an URL to have
+            // the account settings applied against.
+            if(acc.isDefault()) {
+                editInputUrl.setEnabled(true);
+                lblInputUrl.setEnabled(true);
+                editInputUrl.setText("");
+                
+                urlSearchEnabled = false;
+                editUrlSearch.setText("");
+                urlSearchEnabled = true;
+            }
+            else {
+                editInputUrl.setEnabled(false);
+                lblInputUrl.setEnabled(false);
+                editUrl.setText(acc.getUrl());
+            }
+            
         }
         else {
             btnCopyToClipboard.setEnabled(false);
@@ -1628,6 +1788,22 @@ public class GuiMain implements DatabaseListener {
 	    else
 	        accountTreeViewer.setSelection(null);
 	}
+
+    /**
+     * Updates editUrl with modified text from editInputUrl based in the rules of the
+     * current account if it is the default account.
+     */
+    private void updateUrlFromInputUrl() {
+        if(selectedAccount!=null) {
+            if(selectedAccount.isDefault()) {
+                String origUrl = editInputUrl.getText();
+                String newUrl = pwm.getModifiedInputText(origUrl, selectedAccount);
+                editUrl.setText(newUrl);
+            }
+        }
+    }
+    
+
 
 	//////////////////////////////////////////////////////////////
 	//

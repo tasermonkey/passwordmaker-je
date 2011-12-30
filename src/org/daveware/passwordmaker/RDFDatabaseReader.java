@@ -213,7 +213,6 @@ public class RDFDatabaseReader implements DatabaseReader {
         return readAccountFromDescriptionNode(doc.getDocumentElement());
     }
 
-    
     /**
      * Reads the attributes contained with-in an RDF:Description node and
      * converts it all to an Account.
@@ -264,7 +263,22 @@ public class RDFDatabaseReader implements DatabaseReader {
             // of the last time you edited this account.
             //String selectedTabIndex = element.getAttribute("NS1:selectedTabIndex").trim();
 
-            account.setUrl(element.getAttribute("NS1:urlToUse").trim());
+            // Read the URL extraction specifiers
+            if(account.isDefault()) {
+                account.clearUrlComponents();
+                if(element.getAttribute("NS1:protocolCB").trim().compareToIgnoreCase("true")==0)
+                    account.addUrlComponent(Account.UrlComponents.Protocol);
+                if(element.getAttribute("NS1:subdomainCB").trim().compareToIgnoreCase("true")==0)
+                    account.addUrlComponent(Account.UrlComponents.Subdomain);
+                if(element.getAttribute("NS1:domainCB").trim().compareToIgnoreCase("true")==0)
+                    account.addUrlComponent(Account.UrlComponents.Domain);
+                if(element.getAttribute("NS1:pathCB").trim().compareToIgnoreCase("true")==0)
+                    account.addUrlComponent(Account.UrlComponents.PortPathAnchorQuery);
+            }
+            else {
+                // Otherwise use the URL stored with the node
+                account.setUrl(element.getAttribute("NS1:urlToUse").trim());
+            }
     
             // pattern info... I really hope nobody has more than 100000
             for(int iPattern = 0; iPattern < 100000; ++iPattern) {

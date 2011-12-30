@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.StringWriter;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import javax.xml.stream.XMLOutputFactory;
@@ -154,7 +155,20 @@ public class RDFDatabaseWriter implements DatabaseWriter {
     		writer.writeAttribute("NS1:prefix", account.getPrefix());
     		writer.writeAttribute("NS1:suffix", account.getSuffix());
     		writer.writeAttribute("NS1:autoPopulate", "false"); // TODO: make this a setting allowed in accounts
-    		writer.writeAttribute("NS1:urlToUse", account.getUrl());
+    		
+    		// The default account contains specifiers for extracting pieces of an URL
+    		if(account.isDefault()) {
+    		    Set<Account.UrlComponents> urlComponents = account.getUrlComponents();
+                writer.writeAttribute("NS1:protocolCB",  urlComponents.contains(Account.UrlComponents.Protocol) ? "true" : "false");
+                writer.writeAttribute("NS1:subdomainCB", urlComponents.contains(Account.UrlComponents.Subdomain) ? "true" : "false");
+                writer.writeAttribute("NS1:domainCB",    urlComponents.contains(Account.UrlComponents.Domain) ? "true" : "false");
+                writer.writeAttribute("NS1:pathCB",      urlComponents.contains(Account.UrlComponents.PortPathAnchorQuery) ? "true" : "false");
+    		}
+    		else {
+    		    // The non-default accounts store the URL
+    		    writer.writeAttribute("NS1:urlToUse", account.getUrl());
+    		}
+    		
     		int patternCount = 0;
     		for(AccountPatternData data : account.getPatterns()) {
     			writer.writeAttribute("NS1:pattern" + patternCount, data.getPattern());

@@ -21,6 +21,9 @@ import static org.junit.Assert.fail;
 
 import java.security.Security;
 import java.util.Arrays;
+import java.util.EnumSet;
+
+import junit.framework.Assert;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.daveware.passwordmaker.Account;
@@ -78,13 +81,33 @@ public class PasswordMakerTest {
     //                boolean sha256Bug)
             
     private static PWTest urlComponentTest( String expected, String url, UrlComponents ... components) {
-    	Account acc = new Account("Yummy Humans", "", url, "tyrannosaurus@iwishiwasnotextinct.com", 
-    			AlgorithmType.MD5, false, true, 12, CharacterSets.ALPHANUMERIC, 
-    			LeetType.NONE, LeetLevel.LEVEL1, "", "", "", false, "");
-    	for ( UrlComponents urlCom : components ) {
-    		acc.addUrlComponent(urlCom);
-    	}
-    	return new PWTest( acc, "password", expected);
+        Account acc = new Account("Yummy Humans", "", url, "tyrannosaurus@iwishiwasnotextinct.com", 
+                AlgorithmType.MD5, false, true, 12, CharacterSets.ALPHANUMERIC, 
+                LeetType.NONE, LeetLevel.LEVEL1, "", "", "", false, "");
+        for ( UrlComponents urlCom : components ) {
+            acc.addUrlComponent(urlCom);
+        }
+        return new PWTest( acc, "password", expected);
+    }   
+    
+    // same as above but with an empty UrlComponent set and as a default account.
+    /**
+     * Creates a test object with no Url components.
+     * 
+     * @param expected The expected generated password.
+     * @param url The parsing to use when UrlComponents come into play.
+     * @param isDefaultAccount Whether or not to make this a default account. Default
+     *        accounts behave differently when there are no UrlComponent selections.
+     * @return The object suitable for test.
+     */
+    private static PWTest urlComponentTest( String expected, String url, boolean isDefaultAccount) {
+        Account acc = new Account("Yummy Humans", "", url, "tyrannosaurus@iwishiwasnotextinct.com", 
+                AlgorithmType.MD5, false, true, 12, CharacterSets.ALPHANUMERIC, 
+                LeetType.NONE, LeetLevel.LEVEL1, "", "", "", false, "");
+        acc.clearUrlComponents();
+        if(isDefaultAccount)
+            acc.setId(Account.DEFAULT_ACCOUNT_URI);
+        return new PWTest( acc, "password", expected);
     }
     
     private static PWTest [] tests = {
@@ -201,6 +224,12 @@ public class PasswordMakerTest {
         urlComponentTest("C4jcyJU3OITs", "http://yummyhumans.com", UrlComponents.Domain, UrlComponents.PortPathAnchorQuery),
         urlComponentTest("C4jcyJU3OITs", "http://yummyhumans.com", UrlComponents.Domain),
         urlComponentTest("C4jcyJU3OITs", "http://yummyhumans.com/path/to?everything=true", UrlComponents.Domain),
+        
+        // A default account with no UrlComponents selected will use "" as the url for input
+        urlComponentTest("BS0JNF8qbJVN", "http://www.google.com/ig", true),
+        
+        // A non-default account with no UrlComponents selected will use the full url as input
+        urlComponentTest("DTxSlWBBBIeF", "http://www.google.com/ig", false),
     };
     
     public PasswordMakerTest() {
@@ -234,6 +263,30 @@ public class PasswordMakerTest {
                 fail(input[i] + " failed, expected " + expected[i] + " but got " + strength);
             }
         }
+    }
+    
+    @Test
+    public void testGetModifiedInputText() {
+        PasswordMaker pwm = new PasswordMaker();
+        
+        Account a = new Account();
+        a.clearUrlComponents();
+        Assert.assertEquals("", pwm.getModifiedInputText("http://user:pass@a.domain.is.here.com:8080/somePage.html?param=value", a));
+        a.setUrlComponents(EnumSet.of(UrlComponents.Protocol, UrlComponents.Subdomain, UrlComponents.Domain, UrlComponents.PortPathAnchorQuery));
+        Assert.assertEquals("http://a.domain.is.here.com:8080/somePage.html?param=value", pwm.getModifiedInputText("http://a.domain.is.here.com:8080/somePage.html?param=value", a));
+        a.setUrlComponents(EnumSet.of(UrlComponents.Domain));
+        Assert.assertEquals("here.com", pwm.getModifiedInputText("http://a.domain.is.here.com:8080/somePage.html?param=value", a));
+        a.setUrlComponents(EnumSet.of(UrlComponents.Subdomain, UrlComponents.Domain));
+        Assert.assertEquals("a.domain.is.here.com", pwm.getModifiedInputText("http://a.domain.is.here.com:8080/somePage.html?param=value", a));
+        a.setUrlComponents(EnumSet.of(UrlComponents.Subdomain, UrlComponents.Domain, UrlComponents.PortPathAnchorQuery));
+        Assert.assertEquals("a.domain.is.here.com:8080/somePage.html?param=value", pwm.getModifiedInputText("http://a.domain.is.here.com:8080/somePage.html?param=value", a));
+        
+        // TODO: Firefox-Plugin and Web versions disagree about how to handle the port when no port is present.
+        // This test is different with the Firefox plugin.  The firefox plugin would add a ":" after the 
+        // domain when "portPathQuery" is selected but no port is actually present. Eric says this is a
+        // bug and that the correct behavior is that of the web version.  The test below abides by the
+        // web version.  This is an open bug and the behavior is different between implementations.
+        Assert.assertEquals("a.domain.is.here.com/somePage.html?param=value", pwm.getModifiedInputText("http://a.domain.is.here.com/somePage.html?param=value", a));
     }
        
     

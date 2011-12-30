@@ -17,9 +17,12 @@
  */
 package org.daveware.passwordmakerapp.gui;
 
+import java.util.Set;
+
 import org.daveware.passwordmaker.Account;
 import org.daveware.passwordmaker.AccountPatternData;
 import org.daveware.passwordmaker.AlgorithmType;
+import org.daveware.passwordmaker.CharacterSets;
 import org.daveware.passwordmaker.LeetLevel;
 import org.daveware.passwordmaker.LeetType;
 import org.daveware.passwordmaker.PasswordMaker;
@@ -126,6 +129,13 @@ public class AccountDlg {
     private Composite composite_1;
     private Label lblGeneratedPassword;
     private Button btnShowPassword;
+    private CTabItem tbtmDefaultAccountBehavior;
+    private Group grpUrlComponents;
+    private Button btnProtocol;
+    private Button btnSubdomains;
+    private Composite composite_3;
+    private Button btnDomain;
+    private Button btnPort;
     //-------- End RESOURCES THAT MUST BE DISPOSED OF -----------------------------------
 
 	/**
@@ -262,6 +272,32 @@ public class AccountDlg {
 		createContents();
 		
 		tabFolder.setSelection(0);
+		
+		tbtmDefaultAccountBehavior = new CTabItem(tabFolder, SWT.NONE);
+		tbtmDefaultAccountBehavior.setText("Default Account Behavior");
+		
+		grpUrlComponents = new Group(tabFolder, SWT.NONE);
+		grpUrlComponents.setText("URL Components");
+		tbtmDefaultAccountBehavior.setControl(grpUrlComponents);
+		grpUrlComponents.setLayout(new GridLayout(1, false));
+		
+		composite_3 = new Composite(grpUrlComponents, SWT.NONE);
+		composite_3.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
+		RowLayout rl_composite_3 = new RowLayout(SWT.HORIZONTAL);
+		rl_composite_3.spacing = 10;
+		composite_3.setLayout(rl_composite_3);
+		
+		btnProtocol = new Button(composite_3, SWT.CHECK);
+		btnProtocol.setText("Protocol");
+		
+		btnSubdomains = new Button(composite_3, SWT.CHECK);
+		btnSubdomains.setText("Subdomain(s)");
+		
+		btnDomain = new Button(composite_3, SWT.CHECK);
+		btnDomain.setText("Domain");
+		
+		btnPort = new Button(composite_3, SWT.CHECK);
+		btnPort.setText("Port, path, anchor, query parameters");
 		populateGuiFromAccount();
 		setupPatternTable();
 		setupDecorators();
@@ -281,6 +317,15 @@ public class AccountDlg {
 		    
 		    tbtmExtended.dispose();
 		    tbtmExtended = null;
+		}
+		
+		if(account.isDefault()==false) {
+		    tbtmDefaultAccountBehavior.dispose();
+		    tbtmDefaultAccountBehavior = null;
+		}
+		else {
+            textName.setEditable(false);
+            textNotes.setEditable(false);
 		}
 		
 		shlAccountSettings.pack();
@@ -598,7 +643,7 @@ public class AccountDlg {
 		        updatePasswordStrengthMeter();
 		    }
 		});
-		comboCharacters.setItems(new String[] {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()_-+={}|[]\\:\";'<>?,./", "0123456789abcdef", "0123456789", "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", "`~!@#$%^&*()_-+={}|[]\\:\";'<>?,./", "Random"});
+		comboCharacters.setItems(CharacterSets.CHARSETS);
 		GridData gd_comboCharacters = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
 		gd_comboCharacters.widthHint = 200;
 		comboCharacters.setLayoutData(gd_comboCharacters);
@@ -906,6 +951,18 @@ public class AccountDlg {
         account.setPrefix(textPrefix.getText());
         account.setSuffix(textSuffix.getText());
         
+        if(account.isDefault()) {
+            account.clearUrlComponents();
+            if(btnProtocol.getSelection())
+                account.addUrlComponent(Account.UrlComponents.Protocol);
+            if(btnSubdomains.getSelection())
+                account.addUrlComponent(Account.UrlComponents.Subdomain);
+            if(btnDomain.getSelection())
+                account.addUrlComponent(Account.UrlComponents.Domain);
+            if(btnPort.getSelection())
+                account.addUrlComponent(Account.UrlComponents.PortPathAnchorQuery);
+        }
+        
         return true;
     }
 
@@ -959,6 +1016,14 @@ public class AccountDlg {
     	textModifier.setText(account.getModifier());
     	textPrefix.setText(account.getPrefix());
     	textSuffix.setText(account.getSuffix());
+    	
+    	if(account.isDefault()) {
+    	    Set<Account.UrlComponents> urlComponents = account.getUrlComponents();
+    	    btnProtocol.setSelection(urlComponents.contains(Account.UrlComponents.Protocol));
+    	    btnSubdomains.setSelection(urlComponents.contains(Account.UrlComponents.Subdomain));
+    	    btnDomain.setSelection(urlComponents.contains(Account.UrlComponents.Domain));
+    	    btnPort.setSelection(urlComponents.contains(Account.UrlComponents.PortPathAnchorQuery));
+    	}
     }
 
     void selectPattern(AccountPatternData data) {

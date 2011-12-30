@@ -155,7 +155,11 @@ public final class Account implements Comparable<Account> {
         for(AccountPatternData data : a.getPatterns()) {
             this.patterns.add(new AccountPatternData(data));
         }
-        this.setUrlComponents(a.getUrlComponents());
+        // The documentation says EnumSet.copyOf() will fail on empty sets.
+        if(a.urlComponents.isEmpty()==false)
+            this.urlComponents = EnumSet.copyOf(a.urlComponents);
+        else
+            this.urlComponents = defaultUrlComponents();
     }
     
 	    /**
@@ -211,9 +215,13 @@ public final class Account implements Comparable<Account> {
         throws Exception {
         return Account.createId(acc.getName() + acc.getDesc() + (new Random()).nextLong() + Runtime.getRuntime().freeMemory());
     }
-    
+
+    /**
+     * Gets the default set of UrlComponents (empty set).
+     * @return
+     */
 	private static EnumSet<UrlComponents> defaultUrlComponents() {
-		return EnumSet.noneOf(UrlComponents.class);
+	    return EnumSet.noneOf(UrlComponents.class);
 	}
 	
     public String getName() {
