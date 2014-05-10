@@ -482,6 +482,13 @@ public final class Account implements Comparable<Account> {
     	this.urlComponents.add(urlComponent);
     }
     
+    
+    /**
+     * @param urlComponent - Add a component of the url to be used as the input text for the generated password
+     */
+    public final void removeUrlComponent(UrlComponents urlComponent) {
+    	this.urlComponents.remove(urlComponent);
+    }
     /**
      * @param urlComponents - the Components to use of the url as the input text for the generated password
      */

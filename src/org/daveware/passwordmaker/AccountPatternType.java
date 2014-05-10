@@ -54,9 +54,9 @@ public class AccountPatternType implements Comparable<AccountPatternType> {
     {
         if(str.length()==0)
             return WILDCARD;
-        if(str.equals("wildcard"))
+        if(str.equalsIgnoreCase("wildcard"))
             return WILDCARD;
-        if(str.equals("regex"))
+        if(str.equalsIgnoreCase("regex") || str.equalsIgnoreCase(NAMES[1]))
             return REGEX;
         
         throw new Exception(String.format("Invalid AccountPatternType '%1s'", str));

@@ -470,6 +470,9 @@ public class PasswordMaker {
                 Mac mac;
                 String algoName = "HMAC" + account.getAlgorithm().getName();
                 mac = Mac.getInstance(algoName, "BC");
+                
+                
+                
                 mac.init(new SecretKeySpec(masterPasswordBytes.getData(), algoName));
                 mac.reset();
                 mac.update(dataBytes.getData());
