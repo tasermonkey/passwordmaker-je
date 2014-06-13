@@ -20,7 +20,10 @@ package org.daveware.passwordmaker.test;
 import java.io.InputStream;
 import java.security.Security;
 
+import junit.framework.Assert;
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.daveware.passwordmaker.Account;
 import org.daveware.passwordmaker.Database;
 import org.daveware.passwordmaker.RDFDatabaseReader;
 import org.junit.After;
@@ -67,6 +70,17 @@ public class RDFDatabaseReaderTest {
         db.printDatabase();
     }
 
+    @Test
+    public void testReadAccount() throws Exception {
+    	RDFDatabaseReader reader = new RDFDatabaseReader();
+        InputStream is = getClass().getResourceAsStream("sample_account.rdf");
+        Account acc = reader.deserializeAccount(is);
+        Assert.assertEquals("Yahoo.com", acc.getName());
+        Assert.assertEquals("rdf:#$[B@5a676437", acc.getId());
+        Assert.assertEquals("Another Modifier", acc.getModifier());
+        Assert.assertEquals("Im a description", acc.getDesc());
+    }
+    
     /**
      * Test of getExtension method, of class RDFDatabaseReader.
      */

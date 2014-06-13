@@ -25,4 +25,5 @@ import java.io.OutputStream;
  */
 public interface DatabaseWriter {
 	void write(OutputStream os, Database db) throws Exception;
+	void serializeAccount(OutputStream os, Account account) throws Exception;
 }

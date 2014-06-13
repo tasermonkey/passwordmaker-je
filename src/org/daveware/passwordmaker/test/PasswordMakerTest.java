@@ -229,6 +229,11 @@ public class PasswordMakerTest {
         urlComponentTest("FlEkcwvpDedl", "http://subdomain.yummyhumans.com/path/to?everything=true", UrlComponents.Domain, UrlComponents.Subdomain, UrlComponents.PortPathAnchorQuery),
         urlComponentTest("D9nvoh1yCroN", "http://subdomain.yummyhumans.com/path/to?everything=true", UrlComponents.Protocol, UrlComponents.Domain, UrlComponents.Subdomain, UrlComponents.PortPathAnchorQuery),
         urlComponentTest("CFMeyEkYXHIo", "http://subdomain.yummyhumans.com/path/to?everything=true", UrlComponents.Domain, UrlComponents.PortPathAnchorQuery),
+        urlComponentTest("C4jcyJU3OITs", "http://subdomain.yummyhumans.com", UrlComponents.Domain),
+        urlComponentTest("C4jcyJU3OITs", "http://subdomain.yummyhumans.com", UrlComponents.Domain, UrlComponents.PortPathAnchorQuery),
+        urlComponentTest("C4jcyJU3OITs", "http://yummyhumans.com", UrlComponents.Domain, UrlComponents.PortPathAnchorQuery),
+        urlComponentTest("C4jcyJU3OITs", "http://yummyhumans.com", UrlComponents.Domain),
+        urlComponentTest("C4jcyJU3OITs", "http://yummyhumans.com/path/to?everything=true", UrlComponents.Domain),
         
         // A default account with no UrlComponents selected will use "" as the url for input
         urlComponentTest("BS0JNF8qbJVN", "http://www.google.com/ig", true),

@@ -109,6 +109,22 @@ public class RDFDatabaseWriter implements DatabaseWriter {
 		}
 	}
 	
+	@Override
+	public void serializeAccount(OutputStream os, Account account) throws Exception {
+		XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
+		OutputStreamWriter streamWriter = new OutputStreamWriter(os, "UTF-8");
+		XMLStreamWriter writer = outputFactory.createXMLStreamWriter(streamWriter);
+		try {
+			writer.writeStartDocument("UTF-8", "1.0");
+			writeDescription(account, writer);
+			writer.writeEndDocument();
+			writer.close();
+		} finally {
+			// must not throw, otherwise it will block the underlying exception that may have thrown
+			try { writer.close(); } catch (Throwable e) {}
+		}
+	}
+	
 	/**
 	 * Writes a single RDF:Description node to the XML stream.
 	 * @param account The account to write from.

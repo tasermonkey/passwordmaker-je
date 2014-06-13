@@ -203,6 +203,28 @@ public class RDFDatabaseReader implements DatabaseReader {
         }
         return items;
     }
+    
+    @Override
+    public Account deserializeAccount(InputStream is) throws Exception {
+        DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
+        Document doc = docBuilder.parse(is);
+        doc.getDocumentElement().normalize();
+        // Locate the RDF:RDF node
+        Node rdfNode = doc.getFirstChild();
+        if(rdfNode.getNodeName().compareTo("RDF:RDF")==0) {
+          if(rdfNode.getNodeType()!=Node.ELEMENT_NODE)
+              throw new Exception("RDF XML node does not appear to be an element, corrupt file?");
+          return readAccountFromDescriptionNode((Element)rdfNode.getFirstChild());
+        } else if ( rdfNode.getNodeName().compareTo("RDF:Description")==0 ) {
+            if(rdfNode.getNodeType()!=Node.ELEMENT_NODE)
+                throw new Exception("RDF XML node does not appear to be an element, corrupt file?");
+        	return readAccountFromDescriptionNode((Element)rdfNode);
+        } else {
+            throw new Exception("RDF file contained no 'RDF:RDF' nodes, corrupt file?");
+        }
+        
+    }
 
     /**
      * Reads the attributes contained with-in an RDF:Description node and
